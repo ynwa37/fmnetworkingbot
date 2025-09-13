@@ -24,7 +24,8 @@ class Database:
                     branch TEXT NOT NULL,
                     job_title TEXT NOT NULL,
                     about TEXT NOT NULL,
-                    photo_file_id TEXT
+                    photo_file_id TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             
@@ -34,11 +35,25 @@ class Database:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     from_user_id INTEGER NOT NULL,
                     to_user_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (from_user_id) REFERENCES users (telegram_id),
                     FOREIGN KEY (to_user_id) REFERENCES users (telegram_id),
                     UNIQUE(from_user_id, to_user_id)
                 )
             """)
+            
+            # Создаем индексы для улучшения производительности
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_users_branch ON users(branch)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_likes_from_user ON likes(from_user_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_likes_to_user ON likes(to_user_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_likes_pair ON likes(from_user_id, to_user_id)")
+            
+            # Включаем WAL режим для лучшей производительности
+            await db.execute("PRAGMA journal_mode=WAL")
+            await db.execute("PRAGMA synchronous=NORMAL")
+            await db.execute("PRAGMA cache_size=10000")
+            await db.execute("PRAGMA temp_store=MEMORY")
             
             await db.commit()
     
@@ -121,6 +136,34 @@ class Database:
         # Здесь возвращаем telegram_id как заглушку
         return f"user_{telegram_id}"
     
+    async def get_user_contact_info(self, telegram_id: int) -> Dict[str, Any]:
+        """Получить полную контактную информацию пользователя"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT name, branch, job_title, about FROM users WHERE telegram_id = ?",
+                (telegram_id,)
+            )
+            user_data = await cursor.fetchone()
+            return dict(user_data) if user_data else {}
+    
+    async def get_pending_likes(self, to_user_id: int) -> List[Dict[str, Any]]:
+        """Получить список лайков, на которые пользователь еще не ответил"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("""
+                SELECT l.from_user_id, u.name, u.branch, u.job_title, u.about
+                FROM likes l
+                JOIN users u ON l.from_user_id = u.telegram_id
+                WHERE l.to_user_id = ? 
+                AND NOT EXISTS (
+                    SELECT 1 FROM likes l2 
+                    WHERE l2.from_user_id = ? AND l2.to_user_id = l.from_user_id
+                )
+            """, (to_user_id, to_user_id))
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+    
     async def delete_user(self, telegram_id: int) -> bool:
         """Удалить пользователя и все его лайки"""
         try:
@@ -156,5 +199,134 @@ class Database:
                 WHERE telegram_id IN ({placeholders})
                 ORDER BY name
             """, user_ids)
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+    
+    async def search_users_by_name(self, search_query: str, exclude_telegram_id: int = None) -> List[Dict[str, Any]]:
+        """Поиск пользователей по имени (частичное совпадение)"""
+        search_query_lower = search_query.lower().strip()
+        
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            if exclude_telegram_id:
+                cursor = await db.execute("""
+                    SELECT * FROM users
+                    WHERE telegram_id != ?
+                    ORDER BY name
+                """, (exclude_telegram_id,))
+            else:
+                cursor = await db.execute("""
+                    SELECT * FROM users
+                    ORDER BY name
+                """)
+            rows = await cursor.fetchall()
+            
+            # Фильтрация по регистру и частичному совпадению на уровне Python
+            results = []
+            for row in rows:
+                name_lower = row['name'].lower()
+                
+                # Проверяем различные варианты поиска
+                if (search_query_lower in name_lower or  # Частичное совпадение
+                    any(word.startswith(search_query_lower) for word in name_lower.split()) or  # Начинается с поискового запроса
+                    any(search_query_lower in word for word in name_lower.split())):  # Содержится в любом слове
+                    results.append(dict(row))
+            
+            return results
+
+    async def search_users_by_branch(self, search_query: str, exclude_telegram_id: int = None) -> List[Dict[str, Any]]:
+        """Поиск пользователей по отрасли (частичное совпадение)"""
+        search_query_lower = search_query.lower().strip()
+        
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            if exclude_telegram_id:
+                cursor = await db.execute("""
+                    SELECT * FROM users
+                    WHERE telegram_id != ? AND branch IS NOT NULL AND branch != ''
+                    ORDER BY branch, name
+                """, (exclude_telegram_id,))
+            else:
+                cursor = await db.execute("""
+                    SELECT * FROM users
+                    WHERE branch IS NOT NULL AND branch != ''
+                    ORDER BY branch, name
+                """)
+            rows = await cursor.fetchall()
+            
+            # Фильтрация по регистру и частичному совпадению на уровне Python
+            results = []
+            for row in rows:
+                branch_lower = row['branch'].lower()
+                
+                # Проверяем различные варианты поиска
+                if (search_query_lower in branch_lower or  # Частичное совпадение
+                    any(word.startswith(search_query_lower) for word in branch_lower.split()) or  # Начинается с поискового запроса
+                    any(search_query_lower in word for word in branch_lower.split())):  # Содержится в любом слове
+                    results.append(dict(row))
+            
+            return results
+
+    async def get_branches_list(self, exclude_telegram_id: int = None) -> List[str]:
+        """Получает список всех отраслей"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            if exclude_telegram_id:
+                cursor = await db.execute("""
+                    SELECT DISTINCT branch FROM users
+                    WHERE telegram_id != ? AND branch IS NOT NULL AND branch != ''
+                    ORDER BY branch
+                """, (exclude_telegram_id,))
+            else:
+                cursor = await db.execute("""
+                    SELECT DISTINCT branch FROM users
+                    WHERE branch IS NOT NULL AND branch != ''
+                    ORDER BY branch
+                """)
+            rows = await cursor.fetchall()
+            return [row['branch'] for row in rows]
+
+    async def search_users_by_keywords(self, keywords: str, exclude_telegram_id: int = None) -> List[Dict[str, Any]]:
+        """Поиск пользователей по ключевым словам в имени, филиале, должности и интересах"""
+        keywords_lower = keywords.lower().strip()
+        if not keywords_lower:
+            return []
+        
+        search_terms = [term.strip() for term in keywords_lower.split() if term.strip()]
+        if not search_terms:
+            return []
+        
+        # Используем FTS (Full Text Search) для более быстрого поиска
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            
+            # Создаем временную таблицу FTS для поиска
+            await db.execute("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS users_fts USING fts5(
+                    name, branch, job_title, about,
+                    content='users',
+                    content_rowid='id'
+                )
+            """)
+            
+            # Заполняем FTS таблицу, если она пустая
+            await db.execute("""
+                INSERT OR IGNORE INTO users_fts(rowid, name, branch, job_title, about)
+                SELECT id, name, branch, job_title, about FROM users
+            """)
+            
+            # Выполняем поиск через FTS
+            search_query = " ".join([f'"{term}"' for term in search_terms])
+            exclude_condition = "AND u.telegram_id != ?" if exclude_telegram_id else ""
+            params = [exclude_telegram_id] if exclude_telegram_id else []
+            
+            cursor = await db.execute(f"""
+                SELECT u.* FROM users u
+                JOIN users_fts fts ON u.id = fts.rowid
+                WHERE users_fts MATCH ? {exclude_condition}
+                ORDER BY rank
+                LIMIT 50
+            """, [search_query] + params)
+            
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
