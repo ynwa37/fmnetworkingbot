@@ -2,8 +2,11 @@
 Модуль для работы с базой данных SQLite
 """
 import aiosqlite
+import os
 from typing import Optional, List, Dict, Any
-from config import DATABASE_PATH
+
+# Путь к базе данных
+DATABASE_PATH = os.getenv('DATABASE_PATH', 'bot_database.db')
 
 
 class Database:

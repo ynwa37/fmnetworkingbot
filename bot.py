@@ -13,7 +13,13 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import BOT_TOKEN, MESSAGES
+import os
+from config import MESSAGES
+
+# Получаем токен из переменных окружения
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN не найден в переменных окружения!")
 from database import Database
 
 # Настройка логирования

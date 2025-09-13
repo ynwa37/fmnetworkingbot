@@ -3,8 +3,12 @@ services:
     name: fmnetworking-bot
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      python test_imports.py
     startCommand: python bot.py
     envVars:
       - key: BOT_TOKEN
         sync: false
+      - key: DATABASE_PATH
+        value: bot_database.db
