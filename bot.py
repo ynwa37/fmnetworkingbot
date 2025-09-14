@@ -634,6 +634,8 @@ async def process_like(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     viewed_user = current_viewing.get(user_id)
     
+    logger.info(f"🤝 Пользователь {user_id} нажал 'Познакомиться' с {viewed_user['name'] if viewed_user else 'неизвестным'}")
+    
     if not viewed_user:
         await callback.message.edit_text("❌ Профиль не найден. Попробуйте поиск заново.")
         await callback.answer()
@@ -641,9 +643,11 @@ async def process_like(callback: CallbackQuery, state: FSMContext):
     
     # Добавляем интерес к знакомству
     await db.add_like(user_id, viewed_user['telegram_id'])
+    logger.info(f"✅ Лайк добавлен: {user_id} -> {viewed_user['telegram_id']}")
     
     # Проверяем на взаимный интерес
     is_match = await db.check_match(user_id, viewed_user['telegram_id'])
+    logger.info(f"🔍 Проверка взаимного интереса: {is_match}")
     
     if is_match:
         # Получаем полную контактную информацию
@@ -754,14 +758,25 @@ async def process_next(callback: CallbackQuery, state: FSMContext):
     if not random_user:
         # Если все пользователи просмотрены, сбрасываем список
         viewed_users[user_id] = []
-        await callback.message.edit_text(
-            "🎉 **Все профили просмотрены!**\n\n"
-            "Список обновлен, попробуйте снова.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🔄 Начать заново", callback_data="search")],
-                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
-            ])
-        )
+        try:
+            await callback.message.edit_text(
+                "🎉 **Все профили просмотрены!**\n\n"
+                "Список обновлен, попробуйте снова.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔄 Начать заново", callback_data="search")],
+                    [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+                ])
+            )
+        except Exception as e:
+            logger.error(f"Ошибка редактирования сообщения в process_next: {e}")
+            await callback.message.answer(
+                "🎉 **Все профили просмотрены!**\n\n"
+                "Список обновлен, попробуйте снова.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔄 Начать заново", callback_data="search")],
+                    [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+                ])
+            )
         await callback.answer()
         return
     

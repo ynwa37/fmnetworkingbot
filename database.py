@@ -94,6 +94,9 @@ class Database:
         # Добавляем текущего пользователя в список исключений
         exclude_list = [exclude_telegram_id] + viewed_users
         
+        # Удаляем дубликаты и None значения
+        exclude_list = list(set([x for x in exclude_list if x is not None]))
+        
         # Создаем плейсхолдеры для SQL запроса
         placeholders = ','.join(['?' for _ in exclude_list])
         
