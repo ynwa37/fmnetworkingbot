@@ -155,12 +155,10 @@ async def process_name(message: types.Message, state: FSMContext):
     is_edit = data.get('is_edit', False)
     
     if is_edit:
-        # Если редактирование - сохраняем и возвращаемся к меню редактирования
-        await save_profile(message, state, is_edit=True)
-    else:
-        # Если создание - продолжаем процесс
+        # Если редактирование - сохраняем только имя, остальное обработается отдельно
+        await state.update_data(name=message.text)
         await message.answer(
-            "✅ **Имя сохранено!**\n\n"
+            "✅ **Имя обновлено!**\n\n"
             "**Шаг 2/5:** В каком филиале вы работаете?",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
@@ -184,12 +182,10 @@ async def process_branch(message: types.Message, state: FSMContext):
     is_edit = data.get('is_edit', False)
     
     if is_edit:
-        # Если редактирование - сохраняем и возвращаемся к меню редактирования
-        await save_profile(message, state, is_edit=True)
-    else:
-        # Если создание - продолжаем процесс
+        # Если редактирование - сохраняем только филиал, остальное обработается отдельно
+        await state.update_data(branch=message.text)
         await message.answer(
-            "✅ **Филиал сохранен!**\n\n"
+            "✅ **Филиал обновлен!**\n\n"
             "**Шаг 3/5:** Какова ваша должность?",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
@@ -213,12 +209,10 @@ async def process_job_title(message: types.Message, state: FSMContext):
     is_edit = data.get('is_edit', False)
     
     if is_edit:
-        # Если редактирование - сохраняем и возвращаемся к меню редактирования
-        await save_profile(message, state, is_edit=True)
-    else:
-        # Если создание - продолжаем процесс
+        # Если редактирование - сохраняем только должность, остальное обработается отдельно
+        await state.update_data(job_title=message.text)
         await message.answer(
-            "✅ **Должность сохранена!**\n\n"
+            "✅ **Должность обновлена!**\n\n"
             "**Шаг 4/5:** Расскажите о ваших интересах, навыках и целях:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
@@ -242,8 +236,18 @@ async def process_about(message: types.Message, state: FSMContext):
     is_edit = data.get('is_edit', False)
     
     if is_edit:
-        # Если редактирование - сохраняем и возвращаемся к меню редактирования
-        await save_profile(message, state, is_edit=True)
+        # Если редактирование - сохраняем только текст, фото обработается отдельно
+        await state.update_data(about=message.text)
+        await message.answer(
+            "✅ **Описание обновлено!**\n\n"
+            "Хотите добавить фото к анкете?",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="📷 Добавить фото", callback_data="add_photo")],
+                [InlineKeyboardButton(text="⏭ Пропустить", callback_data="skip_photo")],
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
+            ])
+        )
+        await state.set_state(ProfileStates.waiting_for_photo)
     else:
         # Если создание - продолжаем процесс
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
