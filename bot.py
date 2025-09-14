@@ -326,13 +326,16 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
     
     if is_edit:
         # Обновляем существующий профиль
+        # Используем photo_file_id из параметра, если он передан, иначе из FSM
+        final_photo_file_id = photo_file_id if photo_file_id is not None else data.get('photo_file_id')
+        
         success = await db.update_user(
             telegram_id=message.from_user.id,
             name=data['name'],
             branch=data['branch'],
             job_title=data['job_title'],
             about=data['about'],
-            photo_file_id=photo_file_id
+            photo_file_id=final_photo_file_id
         )
         
         if success:
