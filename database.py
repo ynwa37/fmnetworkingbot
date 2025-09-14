@@ -333,3 +333,53 @@ class Database:
             
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
+    
+    async def update_user(self, telegram_id: int, name: str = None, branch: str = None, 
+                         job_title: str = None, about: str = None, photo_file_id: str = None) -> bool:
+        """Обновление данных пользователя"""
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                # Строим запрос динамически на основе переданных параметров
+                update_fields = []
+                params = []
+                
+                if name is not None:
+                    update_fields.append("name = ?")
+                    params.append(name)
+                
+                if branch is not None:
+                    update_fields.append("branch = ?")
+                    params.append(branch)
+                
+                if job_title is not None:
+                    update_fields.append("job_title = ?")
+                    params.append(job_title)
+                
+                if about is not None:
+                    update_fields.append("about = ?")
+                    params.append(about)
+                
+                if photo_file_id is not None:
+                    update_fields.append("photo_file_id = ?")
+                    params.append(photo_file_id)
+                
+                if not update_fields:
+                    return False  # Нет полей для обновления
+                
+                # Добавляем telegram_id в параметры
+                params.append(telegram_id)
+                
+                query = f"""
+                    UPDATE users 
+                    SET {', '.join(update_fields)}
+                    WHERE telegram_id = ?
+                """
+                
+                cursor = await db.execute(query, params)
+                await db.commit()
+                
+                return cursor.rowcount > 0
+                
+        except Exception as e:
+            print(f"Ошибка при обновлении пользователя {telegram_id}: {e}")
+            return False
