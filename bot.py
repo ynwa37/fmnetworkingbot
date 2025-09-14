@@ -23,14 +23,18 @@ if not BOT_TOKEN:
         from config import BOT_TOKEN
     except ImportError:
         raise ValueError("BOT_TOKEN не найден!")
+
+# Создаем объект бота и получаем его ID
+bot = Bot(token=BOT_TOKEN)
+BOT_ID = bot.id if hasattr(bot, 'id') else None
+
 from database import Database
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Инициализация бота и диспетчера
-bot = Bot(token=BOT_TOKEN)
+# Инициализация диспетчера (бот уже создан выше)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
@@ -298,6 +302,22 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
     # Отладочная информация
     logger.info(f"💾 save_profile: photo_file_id = {photo_file_id}")
     logger.info(f"💾 is_edit = {is_edit}")
+    logger.info(f"💾 data keys: {list(data.keys())}")
+    
+    # Проверяем наличие обязательных полей
+    required_fields = ['name', 'branch', 'job_title', 'about']
+    missing_fields = [field for field in required_fields if field not in data or not data[field]]
+    
+    if missing_fields:
+        logger.error(f"❌ Отсутствуют обязательные поля: {missing_fields}")
+        await message.answer(
+            f"❌ **Ошибка:** Не все поля заполнены!\n\n"
+            f"Отсутствуют: {', '.join(missing_fields)}\n\n"
+            f"Пожалуйста, заполните анкету заново.",
+            reply_markup=get_main_menu_keyboard()
+        )
+        await state.clear()
+        return
     
     if is_edit:
         # Обновляем существующий профиль
@@ -1427,6 +1447,39 @@ async def cmd_profile(message: types.Message, state: FSMContext):
         await message.answer(text, parse_mode="Markdown")
 
 
+@dp.message()
+async def handle_unknown_message(message: types.Message, state: FSMContext):
+    """Обработчик для всех необработанных сообщений"""
+    logger.info(f"Необработанное сообщение от {message.from_user.id}: {message.text}")
+    
+    # Если пользователь в процессе создания профиля, предлагаем продолжить
+    current_state = await state.get_state()
+    if current_state in [ProfileStates.waiting_for_name, ProfileStates.waiting_for_branch, 
+                        ProfileStates.waiting_for_job_title, ProfileStates.waiting_for_about, 
+                        ProfileStates.waiting_for_photo]:
+        await message.answer(
+            "❓ Не понимаю эту команду.\n\n"
+            "Пожалуйста, следуйте инструкциям для заполнения анкеты или используйте /cancel для отмены."
+        )
+    else:
+        # Если пользователь не в процессе создания профиля, показываем главное меню
+        user = await db.get_user(message.from_user.id)
+        if user:
+            await message.answer(
+                "❓ Не понимаю эту команду.\n\n"
+                "Используйте кнопки меню для навигации:",
+                reply_markup=get_main_menu_keyboard()
+            )
+        else:
+            await message.answer(
+                "❓ Не понимаю эту команду.\n\n"
+                "Для начала работы создайте профиль:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="📝 Создать анкету", callback_data="create_profile")]
+                ])
+            )
+
+
 async def main():
     """Главная функция"""
     # Инициализируем базу данных
@@ -1441,8 +1494,17 @@ async def main():
 async def send_like_notification_with_buttons(to_user_id: int, from_user_id: int):
     """Отправка уведомления о новом лайке с кнопками ответа"""
     try:
+        # Проверяем, что получатель - не бот
+        if to_user_id == BOT_ID:
+            logger.warning(f"Попытка отправить уведомление боту (ID: {to_user_id})")
+            return False
+            
         # Получаем информацию о пользователе, который поставил лайк
         contact_info = await db.get_user_contact_info(from_user_id)
+        
+        if not contact_info:
+            logger.error(f"Не удалось получить информацию о пользователе {from_user_id}")
+            return False
         
         await bot.send_message(
             to_user_id,
@@ -1454,6 +1516,7 @@ async def send_like_notification_with_buttons(to_user_id: int, from_user_id: int
             f"💡 Выберите действие:",
             reply_markup=get_response_keyboard(from_user_id)
         )
+        logger.info(f"✅ Уведомление о лайке отправлено пользователю {to_user_id}")
         return True
     except Exception as e:
         logger.error(f"Не удалось отправить уведомление о лайке: {e}")
