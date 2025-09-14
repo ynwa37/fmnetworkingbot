@@ -348,7 +348,8 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
             branch=data['branch'],
             job_title=data['job_title'],
             about=data['about'],
-            photo_file_id=final_photo_file_id
+            photo_file_id=final_photo_file_id,
+            update_photo=True
         )
         
         logger.info(f"🔄 Результат обновления: success = {success}")

@@ -335,7 +335,7 @@ class Database:
             return [dict(row) for row in rows]
     
     async def update_user(self, telegram_id: int, name: str = None, branch: str = None, 
-                         job_title: str = None, about: str = None, photo_file_id: str = None) -> bool:
+                         job_title: str = None, about: str = None, photo_file_id: str = None, update_photo: bool = False) -> bool:
         """Обновление данных пользователя"""
         try:
             async with aiosqlite.connect(self.db_path) as db:
@@ -359,7 +359,8 @@ class Database:
                     update_fields.append("about = ?")
                     params.append(about)
                 
-                if photo_file_id is not None:
+                if update_photo:
+                    # photo_file_id может быть None для удаления фото
                     update_fields.append("photo_file_id = ?")
                     params.append(photo_file_id)
                 
