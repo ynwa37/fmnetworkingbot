@@ -630,6 +630,13 @@ async def process_like(callback: CallbackQuery, state: FSMContext):
         except Exception as e:
             logger.error(f"Не удалось отправить уведомление: {e}")
     else:
+        # Отправляем уведомление другому пользователю о новом интересе
+        try:
+            await send_like_notification_with_buttons(viewed_user['telegram_id'], user_id)
+            logger.info(f"Уведомление о лайке отправлено пользователю {viewed_user['telegram_id']}")
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление о лайке: {e}")
+        
         try:
             await callback.message.edit_text(
                 f"✅ **Интерес отправлен!**\n\n"
