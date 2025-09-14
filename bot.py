@@ -16,10 +16,13 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 import os
 from config import MESSAGES
 
-# Получаем токен из переменных окружения
+# Получаем токен из переменных окружения или config.py
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN не найден в переменных окружения!")
+    try:
+        from config import BOT_TOKEN
+    except ImportError:
+        raise ValueError("BOT_TOKEN не найден!")
 from database import Database
 
 # Настройка логирования
