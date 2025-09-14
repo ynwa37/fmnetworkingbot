@@ -340,6 +340,7 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
         logger.info(f"🔄 Обновление профиля: final_photo_file_id = {final_photo_file_id}")
         logger.info(f"🔄 photo_file_id из параметра = {photo_file_id}")
         logger.info(f"🔄 photo_file_id из FSM = {data.get('photo_file_id')}")
+        logger.info(f"🔄 remove_photo = {remove_photo}")
         
         success = await db.update_user(
             telegram_id=message.from_user.id,
