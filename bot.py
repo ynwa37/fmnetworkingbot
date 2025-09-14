@@ -24,9 +24,10 @@ if not BOT_TOKEN:
     except ImportError:
         raise ValueError("BOT_TOKEN не найден!")
 
-# Создаем объект бота и получаем его ID
+# Создаем объект бота
 bot = Bot(token=BOT_TOKEN)
-BOT_ID = bot.id if hasattr(bot, 'id') else None
+# BOT_ID будет получен асинхронно в main()
+BOT_ID = None
 
 from database import Database
 
@@ -1482,6 +1483,17 @@ async def handle_unknown_message(message: types.Message, state: FSMContext):
 
 async def main():
     """Главная функция"""
+    global BOT_ID
+    
+    # Получаем ID бота
+    try:
+        bot_info = await bot.get_me()
+        BOT_ID = bot_info.id
+        logger.info(f"ID бота: {BOT_ID}")
+    except Exception as e:
+        logger.error(f"Не удалось получить ID бота: {e}")
+        BOT_ID = None
+    
     # Инициализируем базу данных
     await db.init_db()
     logger.info("База данных инициализирована")
@@ -1495,7 +1507,7 @@ async def send_like_notification_with_buttons(to_user_id: int, from_user_id: int
     """Отправка уведомления о новом лайке с кнопками ответа"""
     try:
         # Проверяем, что получатель - не бот
-        if to_user_id == BOT_ID:
+        if BOT_ID and to_user_id == BOT_ID:
             logger.warning(f"Попытка отправить уведомление боту (ID: {to_user_id})")
             return False
             
