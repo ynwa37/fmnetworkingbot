@@ -356,6 +356,8 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
         
         if success:
             await state.clear()
+            # Очищаем кэш пользователя после обновления профиля
+            clear_cache()
             await message.answer(
                 "✅ **Профиль успешно обновлен!**\n\n"
                 "Изменения сохранены.",
