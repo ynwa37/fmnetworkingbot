@@ -1198,6 +1198,7 @@ async def edit_name(callback: CallbackQuery, state: FSMContext):
             branch=user_data['branch'],
             job_title=user_data['job_title'],
             about=user_data['about'],
+            photo_file_id=user_data.get('photo_file_id'),  # Включаем текущее фото
             is_edit=True
         )
     
@@ -1223,6 +1224,7 @@ async def edit_branch(callback: CallbackQuery, state: FSMContext):
             branch=user_data['branch'],
             job_title=user_data['job_title'],
             about=user_data['about'],
+            photo_file_id=user_data.get('photo_file_id'),  # Включаем текущее фото
             is_edit=True
         )
     
@@ -1248,6 +1250,7 @@ async def edit_job_title(callback: CallbackQuery, state: FSMContext):
             branch=user_data['branch'],
             job_title=user_data['job_title'],
             about=user_data['about'],
+            photo_file_id=user_data.get('photo_file_id'),  # Включаем текущее фото
             is_edit=True
         )
     
@@ -1273,6 +1276,7 @@ async def edit_about(callback: CallbackQuery, state: FSMContext):
             branch=user_data['branch'],
             job_title=user_data['job_title'],
             about=user_data['about'],
+            photo_file_id=user_data.get('photo_file_id'),  # Включаем текущее фото
             is_edit=True
         )
     
@@ -1298,6 +1302,7 @@ async def edit_photo(callback: CallbackQuery, state: FSMContext):
             branch=user_data['branch'],
             job_title=user_data['job_title'],
             about=user_data['about'],
+            photo_file_id=user_data.get('photo_file_id'),  # Включаем текущее фото
             is_edit=True
         )
     
