@@ -595,14 +595,25 @@ async def process_like(callback: CallbackQuery, state: FSMContext):
         # Получаем полную контактную информацию
         contact_info = await db.get_user_contact_info(viewed_user['telegram_id'])
         
-        await callback.message.edit_text(
-            f"🎉 **Взаимный интерес!**\n\n"
-            f"Вы и {viewed_user['name']} хотите познакомиться!\n\n"
-            f"💬 **Контакты для связи:**\n"
-            f"{format_contact_info(contact_info, viewed_user['telegram_id'])}\n"
-            f"Теперь вы можете связаться и общаться!",
-            reply_markup=get_contact_keyboard(viewed_user['telegram_id'])
-        )
+        try:
+            await callback.message.edit_text(
+                f"🎉 **Взаимный интерес!**\n\n"
+                f"Вы и {viewed_user['name']} хотите познакомиться!\n\n"
+                f"💬 **Контакты для связи:**\n"
+                f"{format_contact_info(contact_info, viewed_user['telegram_id'])}\n"
+                f"Теперь вы можете связаться и общаться!",
+                reply_markup=get_contact_keyboard(viewed_user['telegram_id'])
+            )
+        except Exception as e:
+            logger.error(f"Ошибка редактирования сообщения: {e}")
+            await callback.message.answer(
+                f"🎉 **Взаимный интерес!**\n\n"
+                f"Вы и {viewed_user['name']} хотите познакомиться!\n\n"
+                f"💬 **Контакты для связи:**\n"
+                f"{format_contact_info(contact_info, viewed_user['telegram_id'])}\n"
+                f"Теперь вы можете связаться и общаться!",
+                reply_markup=get_contact_keyboard(viewed_user['telegram_id'])
+            )
         
         # Уведомляем другого пользователя о взаимном интересе
         other_contact_info = await db.get_user_contact_info(user_id)
@@ -619,15 +630,27 @@ async def process_like(callback: CallbackQuery, state: FSMContext):
         except Exception as e:
             logger.error(f"Не удалось отправить уведомление: {e}")
     else:
-        await callback.message.edit_text(
-            f"✅ **Интерес отправлен!**\n\n"
-            f"Вы выразили желание познакомиться с {viewed_user['name']}!\n\n"
-            f"Если {viewed_user['name']} тоже захочет познакомиться, вы получите уведомление о взаимном интересе.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🔍 Найти еще", callback_data="search")],
-                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
-            ])
-        )
+        try:
+            await callback.message.edit_text(
+                f"✅ **Интерес отправлен!**\n\n"
+                f"Вы выразили желание познакомиться с {viewed_user['name']}!\n\n"
+                f"Если {viewed_user['name']} тоже захочет познакомиться, вы получите уведомление о взаимном интересе.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔍 Найти еще", callback_data="search")],
+                    [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+                ])
+            )
+        except Exception as e:
+            logger.error(f"Ошибка редактирования сообщения: {e}")
+            await callback.message.answer(
+                f"✅ **Интерес отправлен!**\n\n"
+                f"Вы выразили желание познакомиться с {viewed_user['name']}!\n\n"
+                f"Если {viewed_user['name']} тоже захочет познакомиться, вы получите уведомление о взаимном интересе.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔍 Найти еще", callback_data="search")],
+                    [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+                ])
+            )
     
     # Добавляем в список просмотренных
     if user_id not in viewed_users:
