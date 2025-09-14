@@ -365,7 +365,7 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
                     reply_markup=get_main_menu_keyboard()
                 )
                 # Показываем обновленную карточку профиля
-                await show_profile_card(message, updated_user_data)
+                await show_profile_card(message, updated_user_data, is_own_profile=True)
             else:
                 await message.answer("❌ Произошла ошибка при получении обновленного профиля.")
         else:
@@ -571,13 +571,23 @@ def get_response_keyboard(from_user_id: int) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
     ])
 
-async def show_profile_card(message: types.Message, user_data: dict):
+async def show_profile_card(message: types.Message, user_data: dict, is_own_profile: bool = False):
     """Показ карточки профиля"""
     text = format_profile_card(user_data)
     
     # Отладочная информация
     logger.info(f"🔍 show_profile_card: photo_file_id = {user_data.get('photo_file_id')}")
     logger.info(f"🔍 user_data keys: {list(user_data.keys())}")
+    logger.info(f"🔍 is_own_profile = {is_own_profile}")
+    
+    # Выбираем клавиатуру в зависимости от того, чей это профиль
+    if is_own_profile:
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Редактировать", callback_data="edit_profile")],
+            [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+        ])
+    else:
+        keyboard = get_profile_card_keyboard()
     
     if user_data.get('photo_file_id'):
         logger.info("📸 Отправляем фото с подписью")
@@ -585,14 +595,14 @@ async def show_profile_card(message: types.Message, user_data: dict):
             photo=user_data['photo_file_id'],
             caption=text,
             parse_mode="Markdown",
-            reply_markup=get_profile_card_keyboard()
+            reply_markup=keyboard
         )
     else:
         logger.info("📝 Отправляем только текст")
         await message.answer(
             text,
             parse_mode="Markdown",
-            reply_markup=get_profile_card_keyboard()
+            reply_markup=keyboard
         )
 
 async def edit_profile_card(callback: CallbackQuery, user_data: dict):
