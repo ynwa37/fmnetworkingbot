@@ -355,11 +355,18 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
         
         if success:
             await state.clear()
-            await message.answer(
-                "✅ **Профиль успешно обновлен!**\n\n"
-                "Изменения сохранены.",
-                reply_markup=get_main_menu_keyboard()
-            )
+            # Получаем обновленные данные профиля
+            updated_user_data = await db.get_user(message.from_user.id)
+            if updated_user_data:
+                await message.answer(
+                    "✅ **Профиль успешно обновлен!**\n\n"
+                    "Изменения сохранены.",
+                    reply_markup=get_main_menu_keyboard()
+                )
+                # Показываем обновленную карточку профиля
+                await show_profile_card(message, updated_user_data)
+            else:
+                await message.answer("❌ Произошла ошибка при получении обновленного профиля.")
         else:
             await message.answer("❌ Произошла ошибка при обновлении профиля. Попробуйте еще раз.")
     else:
