@@ -295,6 +295,10 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
     """Сохранение профиля в базу данных"""
     data = await state.get_data()
     
+    # Отладочная информация
+    logger.info(f"💾 save_profile: photo_file_id = {photo_file_id}")
+    logger.info(f"💾 is_edit = {is_edit}")
+    
     if is_edit:
         # Обновляем существующий профиль
         success = await db.update_user(
@@ -520,7 +524,12 @@ async def show_profile_card(message: types.Message, user_data: dict):
     """Показ карточки профиля"""
     text = format_profile_card(user_data)
     
+    # Отладочная информация
+    logger.info(f"🔍 show_profile_card: photo_file_id = {user_data.get('photo_file_id')}")
+    logger.info(f"🔍 user_data keys: {list(user_data.keys())}")
+    
     if user_data.get('photo_file_id'):
+        logger.info("📸 Отправляем фото с подписью")
         await message.answer_photo(
             photo=user_data['photo_file_id'],
             caption=text,
@@ -528,6 +537,7 @@ async def show_profile_card(message: types.Message, user_data: dict):
             reply_markup=get_profile_card_keyboard()
         )
     else:
+        logger.info("📝 Отправляем только текст")
         await message.answer(
             text,
             parse_mode="Markdown",
