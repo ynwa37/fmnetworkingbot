@@ -278,7 +278,7 @@ async def process_skip_photo(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     is_edit = data.get('is_edit', False)
     
-    await save_profile(callback.message, state, photo_file_id=None, is_edit=is_edit)
+    await save_profile(callback.message, state, photo_file_id=None, is_edit=is_edit, remove_photo=True)
     await callback.answer()
 
 
@@ -300,7 +300,7 @@ async def process_photo_invalid(message: types.Message, state: FSMContext):
     await message.answer("❌ Пожалуйста, отправьте фото или нажмите 'Пропустить'")
 
 
-async def save_profile(message: types.Message, state: FSMContext, photo_file_id: str = None, is_edit: bool = False):
+async def save_profile(message: types.Message, state: FSMContext, photo_file_id: str = None, is_edit: bool = False, remove_photo: bool = False):
     """Сохранение профиля в базу данных"""
     data = await state.get_data()
     
@@ -326,8 +326,16 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
     
     if is_edit:
         # Обновляем существующий профиль
-        # Используем photo_file_id из параметра, если он передан, иначе из FSM
-        final_photo_file_id = photo_file_id if photo_file_id is not None else data.get('photo_file_id')
+        # Определяем final_photo_file_id
+        if remove_photo:
+            # Явно удаляем фото
+            final_photo_file_id = None
+        elif photo_file_id is not None:
+            # Передано новое фото
+            final_photo_file_id = photo_file_id
+        else:
+            # Используем существующее фото из FSM
+            final_photo_file_id = data.get('photo_file_id')
         
         logger.info(f"🔄 Обновление профиля: final_photo_file_id = {final_photo_file_id}")
         logger.info(f"🔄 photo_file_id из параметра = {photo_file_id}")
