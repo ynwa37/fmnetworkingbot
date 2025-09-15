@@ -165,6 +165,16 @@ async def process_name(message: types.Message, state: FSMContext):
             ])
         )
         await state.set_state(ProfileStates.waiting_for_branch)
+    else:
+        # Если создание нового профиля - переходим к следующему шагу
+        await message.answer(
+            "✅ **Отлично!**\n\n"
+            "**Шаг 2/5:** В каком филиале вы работаете?",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
+            ])
+        )
+        await state.set_state(ProfileStates.waiting_for_branch)
 
 
 @dp.message(StateFilter(ProfileStates.waiting_for_branch))
@@ -192,6 +202,16 @@ async def process_branch(message: types.Message, state: FSMContext):
             ])
         )
         await state.set_state(ProfileStates.waiting_for_job_title)
+    else:
+        # Если создание нового профиля - переходим к следующему шагу
+        await message.answer(
+            "✅ **Отлично!**\n\n"
+            "**Шаг 3/5:** Какова ваша должность?",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
+            ])
+        )
+        await state.set_state(ProfileStates.waiting_for_job_title)
 
 
 @dp.message(StateFilter(ProfileStates.waiting_for_job_title))
@@ -213,6 +233,16 @@ async def process_job_title(message: types.Message, state: FSMContext):
         await state.update_data(job_title=message.text)
         await message.answer(
             "✅ **Должность обновлена!**\n\n"
+            "**Шаг 4/5:** Расскажите о ваших интересах, навыках и целях:",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
+            ])
+        )
+        await state.set_state(ProfileStates.waiting_for_about)
+    else:
+        # Если создание нового профиля - переходим к следующему шагу
+        await message.answer(
+            "✅ **Отлично!**\n\n"
             "**Шаг 4/5:** Расскажите о ваших интересах, навыках и целях:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")]
@@ -373,7 +403,7 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
             branch=data['branch'],
             job_title=data['job_title'],
             about=data['about'],
-            photo_file_id=photo_file_id
+            photo_file_id=final_photo_file_id
         )
         
         if success:
