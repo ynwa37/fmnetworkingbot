@@ -397,6 +397,9 @@ async def save_profile(message: types.Message, state: FSMContext, photo_file_id:
             await message.answer("❌ Произошла ошибка при обновлении профиля. Попробуйте еще раз.")
     else:
         # Создаем новый профиль
+        # Для нового профиля используем переданный photo_file_id
+        final_photo_file_id = photo_file_id
+        
         success = await db.add_user(
             telegram_id=message.from_user.id,
             name=data['name'],
